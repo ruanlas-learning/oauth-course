@@ -24,7 +24,17 @@ class CoopOAuthController extends BaseController
      */
     public function redirectToAuthorization(Request $request)
     {
-        die('Implement this in CoopOAuthController::redirectToAuthorization');
+//        die('Implement this in CoopOAuthController::redirectToAuthorization');
+        $redirectUrl = $this->generateUrl('coop_authorize_redirect', array(), true);
+        $url = 'http://coop.apps.symfonycasts.com/authorize?'.http_build_query(array(
+                'response_type' => 'code',
+                'client_id' => 'TopCluck2',
+                'redirect_uri' => $redirectUrl,
+                'scope' => 'eggs-count profile'
+            ));
+
+//        var_dump($url);die;
+        return $this->redirect($url);
     }
 
     /**
@@ -42,6 +52,31 @@ class CoopOAuthController extends BaseController
         // equivalent to $_GET['code']
         $code = $request->get('code');
 
-        die('Implement this in CoopOAuthController::receiveAuthorizationCode');
+//        die('Implement this in CoopOAuthController::receiveAuthorizationCode');
+
+        $http = new Client('http://coop.apps.symfonycasts.com', array(
+            'request.options' => array(
+                'exceptions' => false,
+            )
+        ));
+
+        $request = $http->post('/token', null, array(
+            'client_id'     => 'TopCluck2',
+            'client_secret' => '46afea4a17843bd820be3e22dee30ccd',
+            'grant_type'    => 'authorization_code',
+            'code'          => $code,
+            'redirect_uri'  => $this->generateUrl('coop_authorize_redirect', array(), true),
+        ));
+
+        // make a request to the token url
+        $response = $request->send();
+        $responseBody = $response->getBody(true);
+        var_dump($responseBody);die;
+
+        // parei na aula 3 neste erro
+//        {
+//            "error": "invalid_grant",
+//            "error_description": "The authorization code has expired"
+//        }
     }
 }
