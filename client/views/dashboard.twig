@@ -13,8 +13,11 @@
                 your eggs!
             </div>
 
-            <a class="btn btn-primary btn-lg" href="{{ path('coop_authorize_start') }}">Authorize</a>
-
+            {% if user.coopUserId %}
+                <a class="btn btn-primary btn-lg" href="{{ path('count_eggs') }}">Count Eggs</a>
+            {% else %}
+                <a class="btn btn-primary btn-lg" href="{{ path('coop_authorize_start') }}">Authorize</a>
+            {% endif %}
             {#
             <div class="panel panel-default" style="margin-top: 10px;">
                 <div class="panel-body">
@@ -22,7 +25,12 @@
                 </div>
             </div>
             #}
-
+        <div class="panel panel-default" style="margin-top: 10px;">
+            <div class="panel-body">
+                Share your progress on Facebook!
+                <a href="{{ path('facebook_authorize_start') }}">Connect with Facebook</a>
+            </div>
+        </div>
         </div>
         <div class="col-md-6">
             {{ include('_leaderboard.twig', { 'egg_counts': egg_counts }) }}

@@ -2,6 +2,8 @@
 
 namespace OAuth2Demo\Client\Controllers;
 
+use Guzzle\Http\Client;
+
 class CountEggs extends BaseController
 {
     public static function addRoutes($routing)
@@ -19,7 +21,36 @@ class CountEggs extends BaseController
      */
     public function countEggs()
     {
-        die('Implement this in CountEggs::countEggs');
+        $user = $this->getLoggedInUser();
+
+        if (!$user->coopAccessToken || !$user->coopUserId) {
+            throw new \Exception('Somehow you got here, but without a valid COOP access token! Re-authorize!');
+        }
+
+        $http = new Client('http://coop.apps.knpuniversity.com', array(
+            'request.options' => array(
+                'exceptions' => false,
+            )
+        ));
+
+        if ($user->hasCoopAccessTokenExpired()) {
+            return $this->redirect($this->generateUrl('coop_authorize_start'));
+        }
+
+        $request = $http->post('/api/'. $user->coopUserId . '/eggs-count');
+        $request->addHeader('Authorization', 'Bearer '.$user->coopAccessToken);
+        $response = $request->send();
+
+        if ($response->isError()) {
+            throw new \Exception($response->getBody(true));
+        }
+
+//        echo ($response->getBody(true));die;
+        $countEggsData = json_decode($response->getBody(), true);
+        $eggCount = $countEggsData['data'];
+        $this->setTodaysEggCountForUser($this->getLoggedInUser(), $eggCount);
+
+//        die('Implement this in CountEggs::countEggs');
 
         return $this->redirect($this->generateUrl('home'));
     }

@@ -54,6 +54,18 @@ class CoopOAuthController extends BaseController
 
 //        die('Implement this in CoopOAuthController::receiveAuthorizationCode');
 
+        if (!$code) {
+            $error = $request->get('error');
+            $errorDescription = $request->get('error_description');
+
+            return $this->render('failed_authorization.twig', array(
+                'response' => array(
+                    'error' => $error,
+                    'error_description' => $errorDescription
+                )
+            ));
+        }
+
         $http = new Client('http://coop.apps.symfonycasts.com', array(
             'request.options' => array(
                 'exceptions' => false,
@@ -71,12 +83,66 @@ class CoopOAuthController extends BaseController
         // make a request to the token url
         $response = $request->send();
         $responseBody = $response->getBody(true);
-        var_dump($responseBody);die;
+//        var_dump($responseBody);die;
 
-        // parei na aula 3 neste erro
-//        {
-//            "error": "invalid_grant",
-//            "error_description": "The authorization code has expired"
-//        }
+        $responseArr = json_decode($responseBody, true);
+
+        // if there is no access_token, we have a problem!!!
+        if (!isset($responseArr['access_token'])) {
+            return $this->render('failed_token_request.twig', array(
+                'response' => $responseArr ? $responseArr : $response
+            ));
+        }
+
+        $accessToken = $responseArr['access_token'];
+        $expiresIn = $responseArr['expires_in'];
+        $expiresAt = new \DateTime('+'.$expiresIn.' seconds');
+
+        $request = $http->get('/api/me');
+        $request->addHeader('Authorization', 'Bearer '.$accessToken);
+        $response = $request->send();
+//        echo ($response->getBody(true));die;
+
+        $meData = json_decode($response->getBody(), true);
+
+        if ($this->isUserLoggedIn()) {
+            $user = $this->getLoggedInUser();
+        } else {
+            $user = $this->findOrCreateUser($meData);
+            $this->loginUser($user);
+        }
+
+        $user->coopAccessToken = $accessToken;
+        $user->coopUserId = $meData['id'];
+        $user->coopAccessExpiresAt = $expiresAt;
+        $this->saveUser($user);
+
+        // redirect back to the homepage
+        return $this->redirect($this->generateUrl('home'));
+    }
+
+    private function findOrCreateUser(array $meData)
+    {
+        if ($user = $this->findUserByCOOPId($meData['id'])) {
+            // this is an existing user. Yay!
+            return $user;
+        }
+
+        if ($user = $this->findUserByEmail($meData['email'])) {
+            // we match by email
+            // we have to think if we should trust this. Is it possible to
+            // register at COOP with someone else's email?
+            return $user;
+        }
+
+        $user = $this->createUser(
+            $meData['email'],
+            // a blank password - this user hasn't created a password yet!
+            '',
+            $meData['firstName'],
+            $meData['lastName']
+        );
+
+        return $user;
     }
 }
