@@ -24,17 +24,24 @@ class FacebookOAuthController extends BaseController
      */
     public function redirectToAuthorization()
     {
-        $config = array(
-            'appId' => 'YOUR_APP_ID',
-            'secret' => 'YOUR_APP_SECRET',
-            'allowSignedRequest' => false
+
+        $facebook = $this->createFacebook();
+
+        $redirectUrl = $this->generateUrl(
+            'facebook_authorize_redirect',
+            array(),
+            true
         );
 
-        $facebook = new \Facebook($config);
+        $url = $facebook->getLoginUrl(array(
+            'redirect_uri' => $redirectUrl,
+//            'scope' => array('publish_actions', 'email')
+//            'scope' => array('publish_pages', 'email')
+            'scope' => array('email')
+        ));
 
-        //parei na aula 06 no trecho acima
-
-        die('Todo: Redirect to Facebook');
+        return $this->redirect($url);
+//        die('Todo: Redirect to Facebook');
     }
 
     /**
@@ -49,6 +56,18 @@ class FacebookOAuthController extends BaseController
      */
     public function receiveAuthorizationCode(Application $app, Request $request)
     {
+        $facebook = $this->createFacebook();
+
+        $userId = $facebook->getUser();
+
+        if (!$userId) {
+            return $this->render('failed_authorization.twig', array(
+                'response' => $request->query->all()
+            ));
+        }
+        //parei na aula 06 neste trecho acima
+        var_dump($userId);die;
+
         die('Todo: Handle after Facebook redirects to us');
     }
 
@@ -63,5 +82,16 @@ class FacebookOAuthController extends BaseController
         die('Todo: Use Facebook\'s API to post to someone\'s feed');
 
         return $this->redirect($this->generateUrl('home'));
+    }
+
+    private function createFacebook()
+    {
+        $config = array(
+          'appId' => '123409031920229',
+          'secret' => '54279c6901af0db95c0c41264d5410b9',
+          'allowSignedRequest' => false
+        );
+
+        return new \Facebook($config);
     }
 }
